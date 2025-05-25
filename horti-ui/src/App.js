@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { MantineProvider, AppShell, Container, Group, Text, Button } from '@mantine/core';
 import { DatesProvider } from '@mantine/dates';
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -20,6 +20,35 @@ const theme = {
   fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   headings: { fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
   defaultRadius: 'md',
+};
+
+const AppHeader = ({ user, handleLogout }) => {
+  const navigate = useNavigate();
+  
+  return (
+    <AppShell.Header>
+      <Group justify="space-between" h="100%" px="md">
+        <Text 
+          size={{ base: "lg", sm: "xl" }} 
+          fw={600}
+          style={{ cursor: 'pointer' }}
+          onClick={() => navigate('/')}
+        >
+          🌱 Horti
+        </Text>
+        {user && (
+          <Group>
+            <Text size="sm" c="dimmed" visibleFrom="sm">
+              Welcome, {user.name || user.email}
+            </Text>
+            <Button variant="light" onClick={handleLogout} size="sm">
+              Logout
+            </Button>
+          </Group>
+        )}
+      </Group>
+    </AppShell.Header>
+  );
 };
 
 function App() {
@@ -65,23 +94,7 @@ function App() {
           <UserContext.Provider value={{ user, token }}>
             <Router>
               <AppShell header={{ height: 60 }} padding="md">
-                <AppShell.Header>
-                  <Group justify="space-between" h="100%" px="md">
-                    <Text size="xl" fw={600}>
-                      🌱 Horti - Your Garden Companion
-                    </Text>
-                    {user && (
-                      <Group>
-                        <Text size="sm" c="dimmed">
-                          Welcome, {user.name || user.email}
-                        </Text>
-                        <Button variant="light" onClick={handleLogout}>
-                          Logout
-                        </Button>
-                      </Group>
-                    )}
-                  </Group>
-                </AppShell.Header>
+                <AppHeader user={user} handleLogout={handleLogout} />
 
                 <AppShell.Main>
                   <Container size="lg">

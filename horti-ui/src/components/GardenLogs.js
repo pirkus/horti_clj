@@ -112,7 +112,7 @@ const GardenLogs = () => {
         {logs.map((log) => (
           <Grid.Col span={12} key={log.id}>
             <Card shadow="md" padding="lg">
-              <Group position="apart" mb="md">
+              <Group justify="space-between" mb="md">
                 <Group>
                   <IconNotebook size={24} style={{ color: '#8bc34a' }} />
                   <Text size="lg" fw={600}>
@@ -219,7 +219,7 @@ const GardenLogs = () => {
             value={newLog.notes}
             onChange={(e) => setNewLog({ ...newLog, notes: e.target.value })}
           />
-          <Group position="right" mt="md">
+                      <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={() => setOpen(false)}>Cancel</Button>
             <Button onClick={handleAddLog}>Add Log</Button>
           </Group>

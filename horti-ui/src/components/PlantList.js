@@ -14,15 +14,21 @@ import {
   ActionIcon,
   Textarea,
   Center,
+  Divider,
+  Badge,
 } from '@mantine/core';
-import { IconPlus, IconPlant } from '@tabler/icons-react';
+import { IconPlus, IconPlant, IconTrash, IconHome } from '@tabler/icons-react';
 import { UserContext } from '../contexts/UserContext';
 
 const PlantList = () => {
   const [plants, setPlants] = useState([]);
+  const [canvases, setCanvases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [open, setOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [plantToDelete, setPlantToDelete] = useState(null);
+  const [confirmPlantName, setConfirmPlantName] = useState('');
   const [newPlant, setNewPlant] = useState({
     name: '',
     species: '',
@@ -47,16 +53,55 @@ const PlantList = () => {
       }
     } catch (err) {
       setError('Error connecting to server');
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const fetchCanvases = async () => {
+    try {
+      const response = await fetch('/api/canvases', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setCanvases(data);
+      } else {
+        setError('Failed to fetch canvases');
+      }
+    } catch (err) {
+      setError('Error connecting to server');
     }
   };
 
   useEffect(() => {
     if (token) {
-      fetchPlants();
+      Promise.all([fetchPlants(), fetchCanvases()])
+        .finally(() => setLoading(false));
     }
   }, [token]);
+
+  // Group plants by canvas
+  const groupPlantsByCanvas = () => {
+    const canvasMap = canvases.reduce((acc, canvas) => {
+      acc[canvas.id] = canvas.name;
+      return acc;
+    }, {});
+
+    const grouped = plants.reduce((acc, plant) => {
+      const canvasId = plant.canvasId || plant['canvas-id'] || 'unassigned';
+      const canvasName = canvasMap[canvasId] || 'Unassigned Plants';
+      
+      if (!acc[canvasName]) {
+        acc[canvasName] = [];
+      }
+      acc[canvasName].push(plant);
+      return acc;
+    }, {});
+
+    return grouped;
+  };
 
   const handleAddPlant = async () => {
     try {
@@ -81,7 +126,80 @@ const PlantList = () => {
     }
   };
 
+  const handleDeletePlant = async () => {
+    if (!plantToDelete || confirmPlantName !== plantToDelete.name) {
+      setError('Plant name does not match');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/plants/${plantToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        setDeleteModalOpen(false);
+        setPlantToDelete(null);
+        setConfirmPlantName('');
+        fetchPlants(); // Refresh the list
+      } else {
+        setError('Failed to delete plant');
+      }
+    } catch (err) {
+      setError('Error deleting plant');
+    }
+  };
+
+  const openDeleteModal = (plant) => {
+    setPlantToDelete(plant);
+    setConfirmPlantName('');
+    setDeleteModalOpen(true);
+  };
+
+  const renderPlantCard = (plant) => (
+    <Grid.Col span={{ base: 12, sm: 6, md: 4 }} key={plant.id}>
+      <Card shadow="md" padding="lg">
+        <Group mb="md" align="center" justify="space-between">
+          <Group>
+            <IconPlant size={24} style={{ color: '#20c997' }} />
+            <Text size="lg" fw={600}>
+              {plant.name}
+            </Text>
+          </Group>
+          <ActionIcon 
+            color="red" 
+            onClick={() => openDeleteModal(plant)}
+            variant="light"
+          >
+            <IconTrash size={18} />
+          </ActionIcon>
+        </Group>
+        <Stack spacing="xs">
+          <Text c="dimmed" size="sm">
+            Species: {plant.species || plant.type || 'Unknown'}
+          </Text>
+          {(plant.plantingDate || plant['planting-date']) && (
+            <Text c="dimmed" size="sm">
+              Planted: {new Date(plant.plantingDate || plant['planting-date']).toLocaleDateString()}
+            </Text>
+          )}
+          {plant.notes && (
+            <Text size="sm">
+              {plant.notes}
+            </Text>
+          )}
+        </Stack>
+      </Card>
+    </Grid.Col>
+  );
+
   if (loading) return <Text>Loading plants...</Text>;
+
+  const groupedPlants = groupPlantsByCanvas();
+  const hasPlants = plants.length > 0;
 
   return (
     <Box>
@@ -90,7 +208,7 @@ const PlantList = () => {
           🌱 My Plants
         </Text>
         <Text c="dimmed">
-          Manage your plant collection and track their growth
+          Manage your plant collection and track their growth across all canvases
         </Text>
       </Paper>
 
@@ -100,37 +218,33 @@ const PlantList = () => {
         </Alert>
       )}
 
-      <Grid>
-        {plants.map((plant) => (
-          <Grid.Col span={{ base: 12, sm: 6, md: 4 }} key={plant.id}>
-            <Card shadow="md" padding="lg">
-              <Group mb="md" align="center">
-                <IconPlant size={24} style={{ color: '#20c997' }} />
-                <Text size="lg" fw={600}>
-                  {plant.name}
-                </Text>
-              </Group>
-              <Stack spacing="xs">
-                <Text c="dimmed" size="sm">
-                  Species: {plant.species}
-                </Text>
-                {plant.plantingDate && (
-                  <Text c="dimmed" size="sm">
-                    Planted: {new Date(plant.plantingDate).toLocaleDateString()}
+      {hasPlants ? (
+        <Stack spacing="xl">
+          {Object.entries(groupedPlants).map(([canvasName, canvasPlants]) => (
+            <Box key={canvasName}>
+              <Paper shadow="sm" p="md" mb="md" style={{ backgroundColor: '#f8f9fa' }}>
+                <Group align="center" spacing="md">
+                  <IconHome size={20} style={{ color: '#20c997' }} />
+                  <Text size="lg" fw={600} c="teal">
+                    {canvasName}
                   </Text>
-                )}
-                {plant.notes && (
-                  <Text size="sm">
-                    {plant.notes}
-                  </Text>
-                )}
-              </Stack>
-            </Card>
-          </Grid.Col>
-        ))}
-      </Grid>
-
-      {plants.length === 0 && !loading && (
+                  <Badge variant="light" color="teal" size="sm">
+                    {canvasPlants.length} plant{canvasPlants.length !== 1 ? 's' : ''}
+                  </Badge>
+                </Group>
+              </Paper>
+              
+              <Grid>
+                {canvasPlants.map(renderPlantCard)}
+              </Grid>
+              
+              {Object.keys(groupedPlants).indexOf(canvasName) < Object.keys(groupedPlants).length - 1 && (
+                <Divider my="xl" />
+              )}
+            </Box>
+          ))}
+        </Stack>
+      ) : (
         <Paper shadow="md" p="xl" mt="xl">
           <Center>
             <Stack align="center" spacing="md">
@@ -139,7 +253,7 @@ const PlantList = () => {
                 No plants yet!
               </Text>
               <Text c="dimmed" ta="center">
-                Start your garden by adding your first plant.
+                Start your garden by adding your first plant or create plants directly on your canvases.
               </Text>
             </Stack>
           </Center>
@@ -186,9 +300,41 @@ const PlantList = () => {
             value={newPlant.notes}
             onChange={(e) => setNewPlant({ ...newPlant, notes: e.target.value })}
           />
-          <Group position="right" mt="md">
+          <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={() => setOpen(false)}>Cancel</Button>
             <Button onClick={handleAddPlant}>Add Plant</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        title="Confirm Deletion"
+      >
+        <Stack spacing="md">
+          <Text>
+            Are you sure you want to delete <b>{plantToDelete?.name}</b>?
+          </Text>
+          <Text size="sm">
+            This action cannot be undone. To confirm, please type the plant name below:
+          </Text>
+          <TextInput
+            placeholder="Plant name"
+            value={confirmPlantName}
+            onChange={(e) => setConfirmPlantName(e.target.value)}
+          />
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={() => setDeleteModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              onClick={handleDeletePlant}
+              disabled={confirmPlantName !== plantToDelete?.name}
+            >
+              Delete Plant
+            </Button>
           </Group>
         </Stack>
       </Modal>

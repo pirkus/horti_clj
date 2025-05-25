@@ -1,0 +1,1 @@
+["^ ","~$timeout-policy-from-config-map",["^ ","~:row",6,"~:col",1,"~:fixed-arities",["~#set",[1]],"~:name","^0","~:ns","~$diehard.timeout","~:top-ns","^7","~:type","~:fn"],"~:filename","/home/filken/.m2/repository/diehard/diehard/0.10.3/diehard-0.10.3.jar:diehard/timeout.clj"]

@@ -59,3 +59,7 @@ data/db/
 .env
 *.bak
 *.tmp 
+
+.lsp
+.cpcache
+.clj-kondo

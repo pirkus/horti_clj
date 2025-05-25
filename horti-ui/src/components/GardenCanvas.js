@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -15,11 +16,13 @@ import {
   Textarea,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
-import { IconChartLine, IconTimeline } from '@tabler/icons-react';
+import { IconChartLine, IconTimeline, IconArrowLeft } from '@tabler/icons-react';
 import { UserContext } from '../contexts/UserContext';
 import MetricsViewer from './MetricsViewer';
 
 const GardenCanvas = () => {
+  const { canvasId } = useParams();
+  const navigate = useNavigate();
   const canvasRef = useRef(null);
   const [plants, setPlants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +31,8 @@ const GardenCanvas = () => {
   const [showAddPlant, setShowAddPlant] = useState(false);
   const [showMetrics, setShowMetrics] = useState(false);
   const [showMetricsViewer, setShowMetricsViewer] = useState(false);
-  const [canvasSize] = useState({ width: 800, height: 600 });
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+  const [canvasInfo, setCanvasInfo] = useState(null);
   
   // Enhanced drag state with threshold detection
   const [isDragging, setIsDragging] = useState(false);
@@ -65,9 +69,39 @@ const GardenCanvas = () => {
     { name: 'Spinach', url: 'https://via.placeholder.com/50x50/4caf50/ffffff?text=🥬' },
   ];
 
-  const fetchPlants = useCallback(async () => {
+  const fetchCanvasInfo = useCallback(async () => {
+    if (!canvasId) {
+      setError('No canvas ID provided');
+      setLoading(false);
+      return;
+    }
+    
     try {
-      const response = await fetch('/api/plants', {
+      const response = await fetch(`/api/canvases/${canvasId}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      
+      if (response.ok) {
+        const canvas = await response.json();
+        setCanvasInfo(canvas);
+        setCanvasSize({ width: canvas.width || 800, height: canvas.height || 600 });
+      } else {
+        setError('Failed to fetch canvas info');
+      }
+    } catch (err) {
+      setError('Error connecting to server');
+    }
+  }, [token, canvasId]);
+
+  const fetchPlants = useCallback(async () => {
+    if (!canvasId) {
+      setError('No canvas ID provided');
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/canvases/${canvasId}/plants`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       
@@ -82,13 +116,14 @@ const GardenCanvas = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, canvasId]);
 
   useEffect(() => {
-    if (token) {
+    if (token && canvasId) {
+      fetchCanvasInfo();
       fetchPlants();
     }
-  }, [token, fetchPlants]);
+  }, [token, canvasId, fetchCanvasInfo, fetchPlants]);
 
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -306,10 +341,10 @@ const GardenCanvas = () => {
   };
 
   const handleAddPlant = async () => {
-    if (!newPlant.type || !newPlant.name) return; // Require both type and name
+    if (!newPlant.type || !newPlant.name || !canvasId) return; // Require both type and name and canvas
     
     try {
-      const response = await fetch('/api/plants', {
+      const response = await fetch(`/api/canvases/${canvasId}/plants`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -385,13 +420,35 @@ const GardenCanvas = () => {
   return (
     <Box>
       <Paper shadow="md" p="md" mb="xl">
-        <Text size="xl" fw={700} c="teal">
-          🌱 Interactive Garden Canvas
-        </Text>
+        <Group position="apart" align="center" mb="md">
+          <Group align="center">
+            <Button
+              variant="subtle"
+              leftSection={<IconArrowLeft size={16} />}
+              onClick={() => navigate('/')}
+              size="sm"
+            >
+              Back to Dashboard
+            </Button>
+            <Box>
+              <Text size="xl" fw={700} c="teal">
+                🌱 {canvasInfo?.name || 'Garden Canvas'}
+              </Text>
+              {canvasInfo?.description && (
+                <Text size="sm" c="dimmed">
+                  {canvasInfo.description}
+                </Text>
+              )}
+            </Box>
+          </Group>
+        </Group>
         <Text c="dimmed" mb="md">
           Click anywhere to add a plant, drag plants to move them, or click on existing plants to log daily metrics
         </Text>
         <Group spacing="xs">
+          <Badge variant="outline" color="green" size="sm">
+            📐 {canvasSize.width}×{canvasSize.height}
+          </Badge>
           <Badge variant="outline" color="teal" size="sm">💡 Click empty space to add plants</Badge>
           <Badge variant="outline" color="teal" size="sm">🖱️ Drag plants to move them around</Badge>
           <Badge variant="outline" color="teal" size="sm">📊 Click plants to log EC & pH</Badge>
@@ -454,7 +511,7 @@ const GardenCanvas = () => {
             value={newPlant.name}
             onChange={(e) => setNewPlant({ ...newPlant, name: e.target.value })}
           />
-          <Group position="right" mt="md">
+          <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={() => setShowAddPlant(false)}>Cancel</Button>
             <Button onClick={handleAddPlant} disabled={!newPlant.type || !newPlant.name}>Add Plant</Button>
           </Group>
@@ -544,12 +601,12 @@ const GardenCanvas = () => {
               />
             </Grid.Col>
           </Grid>
-          <Group position="right" mt="md">
+          <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={() => setShowMetrics(false)}>Cancel</Button>
-            <Button variant="outline" leftIcon={<IconTimeline />} onClick={handleViewMetrics}>
+            <Button variant="outline" leftSection={<IconTimeline />} onClick={handleViewMetrics}>
               View Metrics History
             </Button>
-            <Button leftIcon={<IconChartLine />} onClick={handleAddMetrics}>
+            <Button leftSection={<IconChartLine />} onClick={handleAddMetrics}>
               Log Metrics
             </Button>
           </Group>
@@ -562,14 +619,14 @@ const GardenCanvas = () => {
           plantId={selectedPlant?.id} 
           plantName={selectedPlant?.name} 
         />
-        <Group position="right" mt="md">
+        <Group justify="flex-end" mt="md">
           <Button variant="default" onClick={() => setShowMetricsViewer(false)}>Close</Button>
           <Button 
             onClick={() => {
               setShowMetricsViewer(false);
               setShowMetrics(true);
             }} 
-            leftIcon={<IconChartLine />}
+            leftSection={<IconChartLine />}
           >
             Log New Metrics
           </Button>

@@ -160,6 +160,145 @@
       (catch Exception e
         (http-resp/handle-db-error e)))))
 
+(defn delete-plant-handler [db]
+  (fn [request]
+    (try
+      (let [plant-id (get-in request [:path-params :plant-id])
+            user-email (get-in request [:identity :email])]
+        ;; Verify the plant belongs to the user before deleting
+        (if-let [existing-plant (db/find-document-by-id db "plants" plant-id)]
+          (if (= (:user-email existing-plant) user-email)
+            (let [result (db/delete-document db "plants" plant-id)]
+              (if result
+                (http-resp/ok {:result "Plant deleted successfully"})
+                (http-resp/server-error "Failed to delete plant")))
+            (http-resp/forbidden "Access denied"))
+          (http-resp/not-found "Plant not found")))
+      (catch Exception e
+        (http-resp/handle-db-error e)))))
+
+(defn create-canvas-handler [db]
+  (fn [request]
+    (try
+      (let [{:keys [name description width height]} (:json-params request)
+            user-email (get-in request [:identity :email])
+            canvas-data {:name name
+                        :description description
+                        :width (or width 800)
+                        :height (or height 600)}
+            result (db/save-canvas db user-email canvas-data)]
+        (if (contains? result :result)
+          (http-resp/created {:result "Canvas created" :id (str (:_id (:result result)))})
+          (http-resp/bad-request (:error result))))
+      (catch Exception e
+        (http-resp/handle-db-error e)))))
+
+(defn get-canvases-handler [db]
+  (fn [request]
+    (try
+      (let [user-email (get-in request [:identity :email])
+            canvases (db/get-user-canvases db user-email)]
+        (http-resp/ok (->> canvases 
+                          (map #(-> % 
+                                   (assoc :id (str (:_id %))) 
+                                   (dissoc :_id))))))
+      (catch Exception e
+        (http-resp/handle-db-error e)))))
+
+(defn get-canvas-handler [db]
+  (fn [request]
+    (try
+      (let [canvas-id (get-in request [:path-params :canvas-id])
+            user-email (get-in request [:identity :email])
+            canvas (db/find-document-by-id db "canvases" canvas-id)]
+        (if canvas
+          (if (= (:user-email canvas) user-email)
+            (http-resp/ok (-> canvas 
+                             (assoc :id (str (:_id canvas))) 
+                             (dissoc :_id)))
+            (http-resp/forbidden "Access denied"))
+          (http-resp/not-found "Canvas not found")))
+      (catch Exception e
+        (http-resp/handle-db-error e)))))
+
+(defn get-canvas-plants-handler [db]
+  (fn [request]
+    (try
+      (let [canvas-id (get-in request [:path-params :canvas-id])
+            user-email (get-in request [:identity :email])
+            plants (db/get-canvas-plants db canvas-id user-email)]
+        (http-resp/ok (->> plants 
+                          (map #(-> % 
+                                   (assoc :id (str (:_id %))) 
+                                   (dissoc :_id))))))
+      (catch Exception e
+        (http-resp/handle-db-error e)))))
+
+(defn create-canvas-plant-handler [db]
+  (fn [request]
+    (try
+      (let [canvas-id (get-in request [:path-params :canvas-id])
+            {:keys [name type x y planting-date]} (:json-params request)
+            user-email (get-in request [:identity :email])
+            plant-data {:name name 
+                       :type type 
+                       :x x
+                       :y y
+                       :planting-date planting-date}
+            result (db/save-canvas-plant db user-email canvas-id plant-data)]
+        (if (contains? result :result)
+          (http-resp/created {:result "Plant saved" :id (str (:_id (:result result)))})
+          (http-resp/bad-request (:error result))))
+      (catch Exception e
+        (http-resp/handle-db-error e)))))
+
+(defn update-canvas-handler [db]
+  (fn [request]
+    (try
+      (let [canvas-id (get-in request [:path-params :canvas-id])
+            user-email (get-in request [:identity :email])
+            {:keys [name description width height]} (:json-params request)
+            update-data (cond-> {}
+                          name (assoc :name name)
+                          description (assoc :description description)
+                          width (assoc :width width)
+                          height (assoc :height height))
+            result (db/update-canvas db canvas-id user-email update-data)]
+        (if (contains? result :result)
+          (do
+            ;; If dimensions changed, move plants inside bounds
+            (when (and width height)
+              (db/move-plants-inside-canvas db canvas-id width height user-email))
+            (http-resp/ok {:result "Canvas updated successfully"}))
+          (http-resp/bad-request (:error result))))
+      (catch Exception e
+        (http-resp/handle-db-error e)))))
+
+(defn archive-canvas-handler [db]
+  (fn [request]
+    (try
+      (let [canvas-id (get-in request [:path-params :canvas-id])
+            user-email (get-in request [:identity :email])
+            {:keys [archived]} (:json-params request)
+            result (db/archive-canvas db canvas-id user-email archived)]
+        (if (contains? result :result)
+          (http-resp/ok {:result (if archived "Canvas archived" "Canvas unarchived")})
+          (http-resp/bad-request (:error result))))
+      (catch Exception e
+        (http-resp/handle-db-error e)))))
+
+(defn get-archived-canvases-handler [db]
+  (fn [request]
+    (try
+      (let [user-email (get-in request [:identity :email])
+            canvases (db/get-user-archived-canvases db user-email)]
+        (http-resp/ok (->> canvases 
+                          (map #(-> % 
+                                   (assoc :id (str (:_id %))) 
+                                   (dissoc :_id))))))
+      (catch Exception e
+        (http-resp/handle-db-error e)))))
+
 (defn health-check-handler [_]
   (fn [_]
     (http-resp/ok {:status "healthy" :timestamp (java.time.Instant/now)})))
@@ -171,13 +310,24 @@
 (defn create-routes [db]
   (route/expand-routes
    #{["/api/health" :get (health-check-handler db) :route-name :health-check]
+     ;; Canvas routes
+     ["/api/canvases" :post [(body-params) jwt/auth-interceptor (create-canvas-handler db)] :route-name :create-canvas]
+     ["/api/canvases" :get [jwt/auth-interceptor (get-canvases-handler db)] :route-name :get-canvases]
+     ["/api/canvases/archived" :get [jwt/auth-interceptor (get-archived-canvases-handler db)] :route-name :get-archived-canvases]
+     ["/api/canvases/:canvas-id" :get [jwt/auth-interceptor (get-canvas-handler db)] :route-name :get-canvas]
+     ["/api/canvases/:canvas-id" :put [(body-params) jwt/auth-interceptor (update-canvas-handler db)] :route-name :update-canvas]
+     ["/api/canvases/:canvas-id/archive" :put [(body-params) jwt/auth-interceptor (archive-canvas-handler db)] :route-name :archive-canvas]
+     ["/api/canvases/:canvas-id/plants" :get [jwt/auth-interceptor (get-canvas-plants-handler db)] :route-name :get-canvas-plants]
+     ["/api/canvases/:canvas-id/plants" :post [(body-params) jwt/auth-interceptor (create-canvas-plant-handler db)] :route-name :create-canvas-plant]
+     ;; Legacy plant routes (for backward compatibility)
      ["/api/plants" :post [(body-params) jwt/auth-interceptor (create-plant-handler db)] :route-name :create-plant]
      ["/api/plants" :get [jwt/auth-interceptor (get-plants-handler db)] :route-name :get-plants]
      ["/api/plants/:plant-id/metrics" :post [(body-params) jwt/auth-interceptor (create-daily-metrics-handler db)] :route-name :create-metrics]
      ["/api/plants/:plant-id/metrics" :get [jwt/auth-interceptor (get-plant-metrics-handler db)] :route-name :get-plant-metrics]
      ["/api/garden-logs" :post [(body-params) jwt/auth-interceptor (create-garden-log-handler db)] :route-name :create-garden-log]
      ["/api/garden-logs" :get [jwt/auth-interceptor (get-garden-logs-handler db)] :route-name :get-garden-logs]
-     ["/api/plants/:plant-id" :put [(body-params) jwt/auth-interceptor (update-plant-handler db)] :route-name :update-plant]}))
+     ["/api/plants/:plant-id" :put [(body-params) jwt/auth-interceptor (update-plant-handler db)] :route-name :update-plant]
+     ["/api/plants/:plant-id" :delete [jwt/auth-interceptor (delete-plant-handler db)] :route-name :delete-plant]}))
 
 ;; ----------------------------------------------------------------------------
 ;; HTTP Component

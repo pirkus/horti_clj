@@ -95,7 +95,7 @@ function App() {
                         element={user ? <Dashboard /> : <Navigate to="/login" />} 
                       />
                       <Route 
-                        path="/canvas" 
+                        path="/canvas/:canvasId" 
                         element={user ? <GardenCanvas /> : <Navigate to="/login" />} 
                       />
                       <Route 

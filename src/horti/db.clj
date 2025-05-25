@@ -102,6 +102,78 @@
                   {:user-email user-email
                    :date {"$gte" start-date "$lte" end-date}}))
 
+(defn save-canvas
+  "Saves a new garden canvas"
+  [db user-email canvas-data]
+  (save-document db "canvases"
+                 (assoc canvas-data
+                        :user-email user-email
+                        :created-at (java.util.Date.))))
+
+(defn get-user-canvases
+  "Gets all non-archived canvases for a specific user"
+  [db user-email]
+  (find-documents db "canvases" {:user-email user-email :archived {"$ne" true}}))
+
+(defn get-user-archived-canvases
+  "Gets all archived canvases for a specific user"
+  [db user-email]
+  (find-documents db "canvases" {:user-email user-email :archived true}))
+
+(defn get-canvas-plants
+  "Gets all plants for a specific canvas"
+  [db canvas-id user-email]
+  (find-documents db "plants" {:canvas-id canvas-id :user-email user-email}))
+
+(defn save-canvas-plant
+  "Saves a new plant entry with canvas association"
+  [db user-email canvas-id plant-data]
+  (save-document db "plants" 
+                 (assoc plant-data 
+                        :user-email user-email
+                        :canvas-id canvas-id
+                        :created-at (java.util.Date.))))
+
+(defn update-canvas
+  "Updates canvas information"
+  [db canvas-id user-email update-data]
+  (try
+    (let [existing (find-document-by-id db "canvases" canvas-id)]
+      (if (and existing (= (:user-email existing) user-email))
+        {:result (update-document db "canvases" canvas-id update-data)}
+        {:error "Canvas not found or access denied"}))
+    (catch Exception e
+      {:error (.getMessage e)})))
+
+(defn archive-canvas
+  "Archives or unarchives a canvas"
+  [db canvas-id user-email archived?]
+  (try
+    (let [existing (find-document-by-id db "canvases" canvas-id)]
+      (if (and existing (= (:user-email existing) user-email))
+        {:result (update-document db "canvases" canvas-id {:archived archived?})}
+        {:error "Canvas not found or access denied"}))
+    (catch Exception e
+      {:error (.getMessage e)})))
+
+(defn move-plants-inside-canvas
+  "Moves plants that are outside the new canvas bounds to be inside"
+  [db canvas-id new-width new-height user-email]
+  (try
+    (let [plants (find-documents db "plants" {:canvas-id canvas-id :user-email user-email})
+          updates (for [plant plants
+                       :let [x (:x plant)
+                             y (:y plant)]
+                       :when (or (> x (- new-width 25)) (> y (- new-height 25)))]
+                   {:id (str (:_id plant))
+                    :new-x (min (- new-width 25) (max 25 x))
+                    :new-y (min (- new-height 25) (max 25 y))})]
+      (doseq [update updates]
+        (update-document db "plants" (:id update) {:x (:new-x update) :y (:new-y update)}))
+      {:result (count updates)})
+    (catch Exception e
+      {:error (.getMessage e)})))
+
 (defn save-garden-log
   "Saves a new garden log entry"
   [db user-email log-data]

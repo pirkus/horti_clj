@@ -8,7 +8,6 @@ import { jwtDecode } from 'jwt-decode';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import PlantList from './components/PlantList';
-import GardenLogs from './components/GardenLogs';
 import GardenCanvas from './components/GardenCanvas';
 import { UserContext } from './contexts/UserContext';
 
@@ -114,10 +113,6 @@ function App() {
                       <Route 
                         path="/plants" 
                         element={user ? <PlantList /> : <Navigate to="/login" />} 
-                      />
-                      <Route 
-                        path="/logs" 
-                        element={user ? <GardenLogs /> : <Navigate to="/login" />} 
                       />
                     </Routes>
                   </Container>

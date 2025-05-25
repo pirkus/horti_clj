@@ -20,7 +20,6 @@ import {
 } from '@mantine/core';
 import {
   IconPlant,
-  IconNotebook,
   IconPlus,
   IconEye,
   IconSettings,
@@ -181,7 +180,6 @@ const Dashboard = () => {
       actions: [
         { label: 'Create Garden', onClick: () => setShowCreateModal(true), icon: <IconPlus size={16} /> },
       ],
-      featured: true,
     },
     {
       title: 'My Plants',
@@ -189,14 +187,6 @@ const Dashboard = () => {
       icon: <IconPlant size={40} style={{ color: '#20c997' }} />,
       actions: [
         { label: 'View Plants', onClick: () => navigate('/plants'), icon: <IconEye size={16} /> },
-      ],
-    },
-    {
-      title: 'Garden Logs',
-      description: 'Track your gardening activities and progress',
-      icon: <IconNotebook size={40} style={{ color: '#8bc34a' }} />,
-      actions: [
-        { label: 'View Logs', onClick: () => navigate('/logs'), icon: <IconEye size={16} /> },
       ],
     },
   ];
@@ -304,18 +294,14 @@ const Dashboard = () => {
 
       <Grid>
         {dashboardCards.map((card, index) => (
-          <Grid.Col span={card.featured ? 12 : { base: 12, sm: 6 }} key={index}>
+          <Grid.Col span={{ base: 12, sm: 6 }} key={index}>
             <Card 
-              shadow={card.featured ? "lg" : "md"} 
+              shadow="md" 
               padding="lg" 
               h="100%"
               style={{
                 transition: 'transform 0.2s',
                 cursor: 'pointer',
-                ...(card.featured && {
-                  background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)',
-                  border: '2px solid #20c997'
-                })
               }}
               onMouseEnter={(e) => e.target.style.transform = 'translateY(-4px)'}
               onMouseLeave={(e) => e.target.style.transform = 'translateY(0px)'}

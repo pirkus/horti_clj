@@ -20,8 +20,7 @@
   (mc/ensure-index db "users" (array-map :email 1) {:unique true})
   ;; Index for plant data by user and date
   (mc/ensure-index db "plants" (array-map :user-email 1 :created-at 1) {:name "plants_user_date_idx"})
-  ;; Index for garden logs by user and date
-  (mc/ensure-index db "garden-logs" (array-map :user-email 1 :date 1) {:name "logs_user_date_idx"})
+
   ;; Index for daily metrics by plant and date
   (mc/ensure-index db "daily-metrics" (array-map :plant-id 1 :date 1) {:name "metrics_plant_date_idx"}))
 
@@ -95,12 +94,7 @@
                 base-query)]
     (find-documents db "daily-metrics" query)))
 
-(defn get-garden-logs
-  "Gets garden logs for a user within a date range"
-  [db user-email start-date end-date]
-  (find-documents db "garden-logs" 
-                  {:user-email user-email
-                   :date {"$gte" start-date "$lte" end-date}}))
+
 
 (defn save-canvas
   "Saves a new garden canvas"
@@ -174,10 +168,4 @@
     (catch Exception e
       {:error (.getMessage e)})))
 
-(defn save-garden-log
-  "Saves a new garden log entry"
-  [db user-email log-data]
-  (save-document db "garden-logs"
-                 (assoc log-data 
-                        :user-email user-email
-                        :created-at (java.util.Date.)))) 
+ 

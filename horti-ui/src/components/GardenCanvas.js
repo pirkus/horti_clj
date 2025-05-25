@@ -422,14 +422,6 @@ const Garden = () => {
       <Paper shadow="md" p="md" mb="xl">
         <Group position="apart" align="center" mb="md">
           <Group align="center">
-            <Button
-              variant="subtle"
-              leftSection={<IconArrowLeft size={16} />}
-              onClick={() => navigate('/')}
-              size="sm"
-            >
-              Back to Dashboard
-            </Button>
             <Box>
                           <Text size="xl" fw={700} c="teal">
               🌱 {canvasInfo?.name || 'Garden'}

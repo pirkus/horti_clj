@@ -78,38 +78,7 @@
       (catch Exception e
         (http-resp/handle-db-error e)))))
 
-(defn create-garden-log-handler [db]
-  (fn [request]
-    (try
-      (let [{:keys [date activity notes plants weather]} (:json-params request)
-            user-email (get-in request [:identity :email])
-            log-data {:date date 
-                     :activity activity 
-                     :notes notes 
-                     :plants plants 
-                     :weather weather}
-            result (db/save-garden-log db user-email log-data)]
-        (if (contains? result :result)
-          (http-resp/created {:result "Garden log saved" :id (str (:_id (:result result)))})
-          (http-resp/bad-request (:error result))))
-      (catch Exception e
-        (http-resp/handle-db-error e)))))
 
-(defn get-garden-logs-handler [db]
-  (fn [request]
-    (try
-      (let [user-email (get-in request [:identity :email])
-            start-date (get-in request [:query-params :startDate])
-            end-date (get-in request [:query-params :endDate])
-            logs (if (and start-date end-date)
-                   (db/get-garden-logs db user-email start-date end-date)
-                   (db/find-documents db "garden-logs" {:user-email user-email}))]
-        (http-resp/ok (->> logs 
-                          (map #(-> % 
-                                   (assoc :id (str (:_id %))) 
-                                   (dissoc :_id))))))
-      (catch Exception e
-        (http-resp/handle-db-error e)))))
 
 (defn create-daily-metrics-handler [db]
   (fn [request]
@@ -324,8 +293,6 @@
      ["/api/plants" :get [jwt/auth-interceptor (get-plants-handler db)] :route-name :get-plants]
      ["/api/plants/:plant-id/metrics" :post [(body-params) jwt/auth-interceptor (create-daily-metrics-handler db)] :route-name :create-metrics]
      ["/api/plants/:plant-id/metrics" :get [jwt/auth-interceptor (get-plant-metrics-handler db)] :route-name :get-plant-metrics]
-     ["/api/garden-logs" :post [(body-params) jwt/auth-interceptor (create-garden-log-handler db)] :route-name :create-garden-log]
-     ["/api/garden-logs" :get [jwt/auth-interceptor (get-garden-logs-handler db)] :route-name :get-garden-logs]
      ["/api/plants/:plant-id" :put [(body-params) jwt/auth-interceptor (update-plant-handler db)] :route-name :update-plant]
      ["/api/plants/:plant-id" :delete [jwt/auth-interceptor (delete-plant-handler db)] :route-name :delete-plant]}))
 

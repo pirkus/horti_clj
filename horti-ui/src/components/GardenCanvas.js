@@ -20,7 +20,7 @@ import { IconChartLine, IconTimeline, IconArrowLeft } from '@tabler/icons-react'
 import { UserContext } from '../contexts/UserContext';
 import MetricsViewer from './MetricsViewer';
 
-const GardenCanvas = () => {
+const Garden = () => {
   const { canvasId } = useParams();
   const navigate = useNavigate();
   const canvasRef = useRef(null);
@@ -431,9 +431,9 @@ const GardenCanvas = () => {
               Back to Dashboard
             </Button>
             <Box>
-              <Text size="xl" fw={700} c="teal">
-                🌱 {canvasInfo?.name || 'Garden Canvas'}
-              </Text>
+                          <Text size="xl" fw={700} c="teal">
+              🌱 {canvasInfo?.name || 'Garden'}
+            </Text>
               {canvasInfo?.description && (
                 <Text size="sm" c="dimmed">
                   {canvasInfo.description}
@@ -461,7 +461,7 @@ const GardenCanvas = () => {
         </Alert>
       )}
 
-      <Paper shadow="md" p="md" style={{ display: 'inline-block' }}>
+      <Paper shadow="md" p="md" style={{ display: 'inline-block', maxWidth: '100%', overflow: 'auto' }}>
         <canvas
           ref={canvasRef}
           width={canvasSize.width}
@@ -470,11 +470,16 @@ const GardenCanvas = () => {
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onClick={handleCanvasClick}
+          onTouchStart={handleMouseDown}
+          onTouchMove={handleMouseMove}
+          onTouchEnd={handleMouseUp}
           style={{
             border: '2px solid #20c997',
             borderRadius: '8px',
             cursor: 'crosshair',
-            backgroundColor: '#f1f8e9'
+            backgroundColor: '#f1f8e9',
+            maxWidth: '100%',
+            height: 'auto'
           }}
         />
       </Paper>
@@ -503,6 +508,7 @@ const GardenCanvas = () => {
               value: img.name,
               label: img.name
             }))}
+            size="md"
           />
           <TextInput
             label="Plant Name"
@@ -636,4 +642,4 @@ const GardenCanvas = () => {
   );
 };
 
-export default GardenCanvas; 
+export default Garden; 

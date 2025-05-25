@@ -175,11 +175,11 @@ const Dashboard = () => {
 
   const dashboardCards = [
     {
-      title: 'Create New Canvas',
+      title: 'Create New Garden',
       description: 'Set up a new hydroponic growing area',
       icon: <IconPlus size={40} style={{ color: '#20c997' }} />,
       actions: [
-        { label: 'Create Canvas', onClick: () => setShowCreateModal(true), icon: <IconPlus size={16} /> },
+        { label: 'Create Garden', onClick: () => setShowCreateModal(true), icon: <IconPlus size={16} /> },
       ],
       featured: true,
     },
@@ -229,11 +229,11 @@ const Dashboard = () => {
       {canvases.length > 0 && (
         <Box mb="xl">
           <Text size="lg" fw={600} c="teal" mb="md">
-            🏡 Your Garden Canvases
+            🏡 Your Gardens
           </Text>
           <Grid>
             {canvases.map((canvas) => (
-              <Grid.Col span={6} key={canvas.id}>
+              <Grid.Col span={{ base: 12, sm: 6 }} key={canvas.id}>
                 <Card shadow="sm" padding="lg" radius="md" withBorder>
                   <Stack spacing="md">
                     <Group justify="space-between" align="flex-start">
@@ -262,14 +262,14 @@ const Dashboard = () => {
                             leftSection={<IconEdit size={14} />}
                             onClick={() => handleOpenEditModal(canvas)}
                           >
-                            Edit Canvas
+                            Edit Garden
                           </Menu.Item>
                           <Menu.Item
                             leftSection={<IconArchive size={14} />}
                             color="orange"
                             onClick={() => handleOpenArchiveModal(canvas)}
                           >
-                            Archive Canvas
+                            Archive Garden
                           </Menu.Item>
                         </Menu.Dropdown>
                       </Menu>
@@ -291,7 +291,7 @@ const Dashboard = () => {
                         onClick={() => handleOpenCanvas(canvas.id)}
                         fullWidth
                       >
-                        Open Canvas
+                        Open Garden
                       </Button>
                     </Group>
                   </Stack>
@@ -304,7 +304,7 @@ const Dashboard = () => {
 
       <Grid>
         {dashboardCards.map((card, index) => (
-          <Grid.Col span={card.featured ? 12 : 6} key={index}>
+          <Grid.Col span={card.featured ? 12 : { base: 12, sm: 6 }} key={index}>
             <Card 
               shadow={card.featured ? "lg" : "md"} 
               padding="lg" 
@@ -351,11 +351,11 @@ const Dashboard = () => {
       <Box mt="xl">
         <Paper shadow="md" p="xl">
           <Text size="lg" fw={600} c="teal" mb="md">
-            Canvas Usage Tips 🎯
+            Garden Usage Tips 🎯
           </Text>
           <Stack spacing="xs">
             <Text size="sm">
-              • <strong>Add Plants:</strong> Click anywhere on the canvas to place a new plant at that location
+              • <strong>Add Plants:</strong> Click anywhere in your garden to place a new plant at that location
             </Text>
             <Text size="sm">
               • <strong>Log Metrics:</strong> Click on any existing plant to record daily EC & pH values
@@ -374,12 +374,12 @@ const Dashboard = () => {
       <Modal 
         opened={showCreateModal} 
         onClose={() => setShowCreateModal(false)} 
-        title="Create New Garden Canvas"
+        title="Create New Garden"
         size="md"
       >
         <Stack spacing="md">
           <TextInput
-            label="Canvas Name"
+            label="Garden Name"
             placeholder="e.g., Living Room Hydro, Kitchen Herbs"
             required
             value={newCanvas.name}
@@ -394,7 +394,7 @@ const Dashboard = () => {
           />
           <Group grow>
             <NumberInput
-              label="Canvas Width"
+              label="Garden Width"
               value={newCanvas.width}
               onChange={(value) => setNewCanvas({ ...newCanvas, width: value || 800 })}
               min={400}
@@ -402,7 +402,7 @@ const Dashboard = () => {
               step={50}
             />
             <NumberInput
-              label="Canvas Height"
+              label="Garden Height"
               value={newCanvas.height}
               onChange={(value) => setNewCanvas({ ...newCanvas, height: value || 600 })}
               min={300}
@@ -419,7 +419,7 @@ const Dashboard = () => {
               disabled={!newCanvas.name.trim()}
               leftSection={<IconPlus size={16} />}
             >
-              Create Canvas
+              Create Garden
             </Button>
           </Group>
         </Stack>
@@ -429,12 +429,12 @@ const Dashboard = () => {
       <Modal 
         opened={showEditModal} 
         onClose={() => setShowEditModal(false)} 
-        title={`Edit Canvas: ${selectedCanvas?.name}`}
+        title={`Edit Garden: ${selectedCanvas?.name}`}
         size="md"
       >
         <Stack spacing="md">
           <TextInput
-            label="Canvas Name"
+            label="Garden Name"
             placeholder="e.g., Living Room Hydro, Kitchen Herbs"
             required
             value={editCanvas.name}
@@ -449,7 +449,7 @@ const Dashboard = () => {
           />
           <Group grow>
             <NumberInput
-              label="Canvas Width"
+              label="Garden Width"
               value={editCanvas.width}
               onChange={(value) => setEditCanvas({ ...editCanvas, width: value || 800 })}
               min={400}
@@ -457,7 +457,7 @@ const Dashboard = () => {
               step={50}
             />
             <NumberInput
-              label="Canvas Height"
+              label="Garden Height"
               value={editCanvas.height}
               onChange={(value) => setEditCanvas({ ...editCanvas, height: value || 600 })}
               min={300}
@@ -467,7 +467,7 @@ const Dashboard = () => {
           </Group>
           <Alert color="blue" variant="light">
             <Text size="sm">
-              📏 <strong>Note:</strong> If you change the canvas size, any plants outside the new boundaries will be automatically moved inside.
+              📏 <strong>Note:</strong> If you change the garden size, any plants outside the new boundaries will be automatically moved inside.
             </Text>
           </Alert>
           <Group justify="flex-end" mt="md">
@@ -479,7 +479,7 @@ const Dashboard = () => {
               disabled={!editCanvas.name.trim()}
               leftSection={<IconEdit size={16} />}
             >
-              Update Canvas
+              Update Garden
             </Button>
           </Group>
         </Stack>
@@ -489,7 +489,7 @@ const Dashboard = () => {
       <Modal 
         opened={showArchiveModal} 
         onClose={() => setShowArchiveModal(false)} 
-        title="Archive Canvas"
+        title="Archive Garden"
         size="sm"
       >
         <Stack spacing="md">
@@ -497,7 +497,7 @@ const Dashboard = () => {
             Are you sure you want to archive <strong>{selectedCanvas?.name}</strong>?
           </Text>
           <Text size="sm" c="dimmed">
-            Archived canvases won't appear in your main dashboard but can be restored later from the archived section.
+            Archived gardens won't appear in your main dashboard but can be restored later from the archived section.
           </Text>
           <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={() => setShowArchiveModal(false)}>
@@ -508,7 +508,7 @@ const Dashboard = () => {
               onClick={handleArchiveCanvas}
               leftSection={<IconArchive size={16} />}
             >
-              Archive Canvas
+              Archive Garden
             </Button>
           </Group>
         </Stack>

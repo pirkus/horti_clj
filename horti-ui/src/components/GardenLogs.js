@@ -176,17 +176,18 @@ const GardenLogs = () => {
         variant="filled"
         style={{ 
           position: 'fixed', 
-          bottom: 16, 
-          right: 16,
-          width: 56,
-          height: 56
+          bottom: 20, 
+          right: 20,
+          width: 60,
+          height: 60,
+          zIndex: 1000
         }}
         onClick={() => setOpen(true)}
       >
-        <IconPlus size={24} />
+        <IconPlus size={28} />
       </ActionIcon>
 
-      <Modal opened={open} onClose={() => setOpen(false)} title="Add Garden Log">
+      <Modal opened={open} onClose={() => setOpen(false)} title="Add Garden Log" size={{ base: 'full', sm: 'md' }}>
         <Stack spacing="md">
           <TextInput
             label="Date"

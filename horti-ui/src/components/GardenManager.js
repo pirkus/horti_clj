@@ -21,7 +21,7 @@ import {
 import { IconPlus, IconPlant, IconEye, IconSettings } from '@tabler/icons-react';
 import { UserContext } from '../contexts/UserContext';
 
-const CanvasManager = () => {
+const GardenManager = () => {
   const navigate = useNavigate();
   const [canvases, setCanvases] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +99,7 @@ const CanvasManager = () => {
         <Group position="apart" align="center">
           <Box>
             <Text size="xl" fw={700} c="teal" mb="sm">
-              🏡 Garden Canvases
+              🏡 Gardens
             </Text>
             <Text c="dimmed">
               Manage multiple hydroponic setups across different rooms and locations
@@ -110,7 +110,7 @@ const CanvasManager = () => {
             onClick={() => setShowCreateModal(true)}
             size="md"
           >
-            Create Canvas
+            Create Garden
           </Button>
         </Group>
       </Paper>
@@ -127,17 +127,17 @@ const CanvasManager = () => {
             <Stack align="center" spacing="md">
               <IconPlant size={60} style={{ color: '#aed581' }} />
               <Text size="lg" fw={600}>
-                No garden canvases yet!
+                No gardens yet!
               </Text>
               <Text c="dimmed" ta="center">
-                Create your first canvas to start organizing your hydroponic setups.
+                Create your first garden to start organizing your hydroponic setups.
               </Text>
               <Button
                 leftSection={<IconPlus size={16} />}
                 onClick={() => setShowCreateModal(true)}
                 size="lg"
               >
-                Create Your First Canvas
+                Create Your First Garden
               </Button>
             </Stack>
           </Center>
@@ -145,7 +145,7 @@ const CanvasManager = () => {
       ) : (
         <Grid>
           {canvases.map((canvas) => (
-            <Grid.Col span={6} key={canvas.id}>
+                          <Grid.Col span={{ base: 12, sm: 6 }} key={canvas.id}>
               <Card shadow="sm" padding="lg" radius="md" withBorder>
                 <Stack spacing="md">
                   <Group position="apart" align="flex-start">
@@ -184,7 +184,7 @@ const CanvasManager = () => {
                       onClick={() => handleOpenCanvas(canvas.id)}
                       fullWidth
                     >
-                      Open Canvas
+                      Open Garden
                     </Button>
                   </Group>
                 </Stack>
@@ -198,12 +198,12 @@ const CanvasManager = () => {
       <Modal 
         opened={showCreateModal} 
         onClose={() => setShowCreateModal(false)} 
-        title="Create New Garden Canvas"
+        title="Create New Garden"
         size="md"
       >
         <Stack spacing="md">
           <TextInput
-            label="Canvas Name"
+            label="Garden Name"
             placeholder="e.g., Living Room Hydro, Kitchen Herbs"
             required
             value={newCanvas.name}
@@ -218,7 +218,7 @@ const CanvasManager = () => {
           />
           <Group grow>
             <NumberInput
-              label="Canvas Width"
+              label="Garden Width"
               value={newCanvas.width}
               onChange={(value) => setNewCanvas({ ...newCanvas, width: value || 800 })}
               min={400}
@@ -226,7 +226,7 @@ const CanvasManager = () => {
               step={50}
             />
             <NumberInput
-              label="Canvas Height"
+              label="Garden Height"
               value={newCanvas.height}
               onChange={(value) => setNewCanvas({ ...newCanvas, height: value || 600 })}
               min={300}
@@ -243,7 +243,7 @@ const CanvasManager = () => {
               disabled={!newCanvas.name.trim()}
               leftSection={<IconPlus size={16} />}
             >
-              Create Canvas
+              Create Garden
             </Button>
           </Group>
         </Stack>
@@ -252,4 +252,4 @@ const CanvasManager = () => {
   );
 };
 
-export default CanvasManager; 
+export default GardenManager; 

@@ -82,21 +82,21 @@ const PlantList = () => {
     }
   }, [token]);
 
-  // Group plants by canvas
-  const groupPlantsByCanvas = () => {
-    const canvasMap = canvases.reduce((acc, canvas) => {
+  // Group plants by garden
+  const groupPlantsByGarden = () => {
+    const gardenMap = canvases.reduce((acc, canvas) => {
       acc[canvas.id] = canvas.name;
       return acc;
     }, {});
 
     const grouped = plants.reduce((acc, plant) => {
-      const canvasId = plant.canvasId || plant['canvas-id'] || 'unassigned';
-      const canvasName = canvasMap[canvasId] || 'Unassigned Plants';
+      const gardenId = plant.canvasId || plant['canvas-id'] || 'unassigned';
+      const gardenName = gardenMap[gardenId] || 'Unassigned Plants';
       
-      if (!acc[canvasName]) {
-        acc[canvasName] = [];
+      if (!acc[gardenName]) {
+        acc[gardenName] = [];
       }
-      acc[canvasName].push(plant);
+      acc[gardenName].push(plant);
       return acc;
     }, {});
 
@@ -198,7 +198,7 @@ const PlantList = () => {
 
   if (loading) return <Text>Loading plants...</Text>;
 
-  const groupedPlants = groupPlantsByCanvas();
+  const groupedPlants = groupPlantsByGarden();
   const hasPlants = plants.length > 0;
 
   return (
@@ -208,7 +208,7 @@ const PlantList = () => {
           🌱 My Plants
         </Text>
         <Text c="dimmed">
-          Manage your plant collection and track their growth across all canvases
+          Manage your plant collection and track their growth across all gardens
         </Text>
       </Paper>
 
@@ -220,25 +220,25 @@ const PlantList = () => {
 
       {hasPlants ? (
         <Stack spacing="xl">
-          {Object.entries(groupedPlants).map(([canvasName, canvasPlants]) => (
-            <Box key={canvasName}>
+          {Object.entries(groupedPlants).map(([gardenName, gardenPlants]) => (
+            <Box key={gardenName}>
               <Paper shadow="sm" p="md" mb="md" style={{ backgroundColor: '#f8f9fa' }}>
                 <Group align="center" spacing="md">
                   <IconHome size={20} style={{ color: '#20c997' }} />
                   <Text size="lg" fw={600} c="teal">
-                    {canvasName}
+                    {gardenName}
                   </Text>
                   <Badge variant="light" color="teal" size="sm">
-                    {canvasPlants.length} plant{canvasPlants.length !== 1 ? 's' : ''}
+                    {gardenPlants.length} plant{gardenPlants.length !== 1 ? 's' : ''}
                   </Badge>
                 </Group>
               </Paper>
               
               <Grid>
-                {canvasPlants.map(renderPlantCard)}
+                {gardenPlants.map(renderPlantCard)}
               </Grid>
               
-              {Object.keys(groupedPlants).indexOf(canvasName) < Object.keys(groupedPlants).length - 1 && (
+              {Object.keys(groupedPlants).indexOf(gardenName) < Object.keys(groupedPlants).length - 1 && (
                 <Divider my="xl" />
               )}
             </Box>
@@ -253,7 +253,7 @@ const PlantList = () => {
                 No plants yet!
               </Text>
               <Text c="dimmed" ta="center">
-                Start your garden by adding your first plant or create plants directly on your canvases.
+                Start your garden by adding your first plant or create plants directly in your gardens.
               </Text>
             </Stack>
           </Center>
@@ -266,17 +266,18 @@ const PlantList = () => {
         variant="filled"
         style={{ 
           position: 'fixed', 
-          bottom: 16, 
-          right: 16,
-          width: 56,
-          height: 56
+          bottom: 20, 
+          right: 20,
+          width: 60,
+          height: 60,
+          zIndex: 1000
         }}
         onClick={() => setOpen(true)}
       >
-        <IconPlus size={24} />
+        <IconPlus size={28} />
       </ActionIcon>
 
-      <Modal opened={open} onClose={() => setOpen(false)} title="Add New Plant">
+      <Modal opened={open} onClose={() => setOpen(false)} title="Add New Plant" size={{ base: 'full', sm: 'md' }}>
         <Stack spacing="md">
           <TextInput
             label="Plant Name"
@@ -311,6 +312,7 @@ const PlantList = () => {
         opened={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         title="Confirm Deletion"
+        size={{ base: 'full', sm: 'md' }}
       >
         <Stack spacing="md">
           <Text>

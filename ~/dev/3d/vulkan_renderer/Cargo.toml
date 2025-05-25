@@ -1,0 +1,19 @@
+[package]
+name = "vulkan_renderer"
+version = "0.1.0"
+edition = "2021"
+authors = ["User"]
+
+[dependencies]
+winit = "0.28"
+ash = "0.37"
+ash-window = "0.12"
+glam = "0.24"
+memoffset = "0.9"
+bytemuck = { version = "1.13", features = ["derive"] }
+anyhow = "1.0"
+log = "0.4"
+env_logger = "0.10"
+
+[features]
+default = [] 

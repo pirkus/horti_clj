@@ -17,8 +17,9 @@ import {
   Divider,
   Badge,
 } from '@mantine/core';
-import { IconPlus, IconPlant, IconTrash, IconHome } from '@tabler/icons-react';
+import { IconPlus, IconPlant, IconTrash, IconHome, IconEdit } from '@tabler/icons-react';
 import { UserContext } from '../contexts/UserContext';
+import PlantEditModal from './PlantEditModal';
 
 const PlantList = () => {
   const [plants, setPlants] = useState([]);
@@ -27,7 +28,9 @@ const PlantList = () => {
   const [error, setError] = useState(null);
   const [open, setOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [plantToDelete, setPlantToDelete] = useState(null);
+  const [plantToEdit, setPlantToEdit] = useState(null);
   const [confirmPlantName, setConfirmPlantName] = useState('');
   const [newPlant, setNewPlant] = useState({
     name: '',
@@ -159,23 +162,41 @@ const PlantList = () => {
     setDeleteModalOpen(true);
   };
 
+  const openEditModal = (plant) => {
+    setPlantToEdit(plant);
+    setEditModalOpen(true);
+  };
+
+  const handlePlantUpdated = () => {
+    fetchPlants(); // Refresh the plant list
+  };
+
   const renderPlantCard = (plant) => (
     <Grid.Col span={{ base: 12, sm: 6, md: 4 }} key={plant.id}>
       <Card shadow="md" padding="lg">
         <Group mb="md" align="center" justify="space-between">
           <Group>
-            <IconPlant size={24} style={{ color: '#20c997' }} />
+            <Text size="xl">{plant.emoji || '🌱'}</Text>
             <Text size="lg" fw={600}>
               {plant.name}
             </Text>
           </Group>
-          <ActionIcon 
-            color="red" 
-            onClick={() => openDeleteModal(plant)}
-            variant="light"
-          >
-            <IconTrash size={18} />
-          </ActionIcon>
+          <Group spacing="xs">
+            <ActionIcon 
+              color="blue" 
+              onClick={() => openEditModal(plant)}
+              variant="light"
+            >
+              <IconEdit size={18} />
+            </ActionIcon>
+            <ActionIcon 
+              color="red" 
+              onClick={() => openDeleteModal(plant)}
+              variant="light"
+            >
+              <IconTrash size={18} />
+            </ActionIcon>
+          </Group>
         </Group>
         <Stack spacing="xs">
           <Text c="dimmed" size="sm">
@@ -340,6 +361,14 @@ const PlantList = () => {
           </Group>
         </Stack>
       </Modal>
+
+      {/* Plant Edit Modal */}
+      <PlantEditModal
+        opened={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        plant={plantToEdit}
+        onUpdate={handlePlantUpdated}
+      />
     </Box>
   );
 };

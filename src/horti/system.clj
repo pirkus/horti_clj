@@ -50,7 +50,7 @@
 (defn create-plant-handler [db]
   (fn [request]
     (try
-      (let [{:keys [name species planting-date notes x y image-url]} (:json-params request)
+      (let [{:keys [name species planting-date notes x y image-url emoji]} (:json-params request)
             user-email (get-in request [:identity :email])
             plant-data {:name name 
                        :species species 
@@ -58,7 +58,8 @@
                        :notes notes
                        :x x
                        :y y
-                       :image-url image-url}
+                       :image-url image-url
+                       :emoji emoji}
             result (db/save-plant db user-email plant-data)]
         (if (contains? result :result)
           (http-resp/created {:result "Plant saved" :id (str (:_id (:result result)))})
@@ -207,10 +208,11 @@
   (fn [request]
     (try
       (let [canvas-id (get-in request [:path-params :canvas-id])
-            {:keys [name type x y planting-date]} (:json-params request)
+            {:keys [name type emoji x y planting-date]} (:json-params request)
             user-email (get-in request [:identity :email])
             plant-data {:name name 
                        :type type 
+                       :emoji emoji
                        :x x
                        :y y
                        :planting-date planting-date}

@@ -158,10 +158,10 @@
           updates (for [plant plants
                        :let [x (:x plant)
                              y (:y plant)]
-                       :when (or (> x (- new-width 25)) (> y (- new-height 25)))]
+                       :when (or (> x (- new-width 30)) (> y (- new-height 30)))]
                    {:id (str (:_id plant))
-                    :new-x (min (- new-width 25) (max 25 x))
-                    :new-y (min (- new-height 25) (max 25 y))})]
+                    :new-x (min (- new-width 30) (max 30 x))
+                    :new-y (min (- new-height 30) (max 30 y))})]
       (doseq [update updates]
         (update-document db "plants" (:id update) {:x (:new-x update) :y (:new-y update)}))
       {:result (count updates)})

@@ -16,9 +16,10 @@ import {
   Textarea,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
-import { IconChartLine, IconTimeline, IconArrowLeft } from '@tabler/icons-react';
+import { IconChartLine, IconTimeline, IconArrowLeft, IconEdit } from '@tabler/icons-react';
 import { UserContext } from '../contexts/UserContext';
 import MetricsViewer from './MetricsViewer';
+import PlantEditModal from './PlantEditModal';
 
 const Garden = () => {
   const { canvasId } = useParams();
@@ -31,6 +32,7 @@ const Garden = () => {
   const [showAddPlant, setShowAddPlant] = useState(false);
   const [showMetrics, setShowMetrics] = useState(false);
   const [showMetricsViewer, setShowMetricsViewer] = useState(false);
+  const [showEditPlant, setShowEditPlant] = useState(false);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const [canvasInfo, setCanvasInfo] = useState(null);
   
@@ -47,6 +49,7 @@ const Garden = () => {
   const [newPlant, setNewPlant] = useState({
     type: '',
     name: '',
+    emoji: '',
     x: 0,
     y: 0
   });
@@ -61,13 +64,20 @@ const Garden = () => {
 
   const { token } = useContext(UserContext);
 
-  const defaultPlantImages = [
-    { name: 'Tomato', url: 'https://via.placeholder.com/50x50/4caf50/ffffff?text=🍅' },
-    { name: 'Lettuce', url: 'https://via.placeholder.com/50x50/66bb6a/ffffff?text=🥬' },
-    { name: 'Basil', url: 'https://via.placeholder.com/50x50/8bc34a/ffffff?text=🌿' },
-    { name: 'Pepper', url: 'https://via.placeholder.com/50x50/ff7043/ffffff?text=🌶️' },
-    { name: 'Spinach', url: 'https://via.placeholder.com/50x50/4caf50/ffffff?text=🥬' },
+  const defaultPlantTypes = [
+    { name: 'Tomato', emoji: '🍅' },
+    { name: 'Lettuce', emoji: '🥬' },
+    { name: 'Basil', emoji: '🌿' },
+    { name: 'Pepper', emoji: '🌶️' },
+    { name: 'Spinach', emoji: '🥬' },
+    { name: 'Carrot', emoji: '🥕' },
+    { name: 'Cucumber', emoji: '🥒' },
+    { name: 'Herbs', emoji: '🌱' },
+    { name: 'Flowers', emoji: '🌸' },
+    { name: 'Microgreens', emoji: '🌾' },
   ];
+
+  const commonEmojis = ['🍅', '🥬', '🌿', '🌶️', '🥕', '🥒', '🌱', '🌸', '🌾', '🌽', '🫑', '🥦', '🧄', '🧅', '🍓', '🫐', '🥝', '🍇', '🍊', '🍋'];
 
   const fetchCanvasInfo = useCallback(async () => {
     if (!canvasId) {
@@ -154,28 +164,35 @@ const Garden = () => {
     // Draw plants
     plants.forEach(plant => {
       if (plant.x !== undefined && plant.y !== undefined) {
-        // Highlight dragged plant
         const isBeingDragged = draggedPlant?.id === plant.id;
         const isSelected = selectedPlant?.id === plant.id;
         
-        // Draw plant circle with different colors for different states
-        if (isBeingDragged) {
-          ctx.fillStyle = '#2196f3'; // Blue when dragging
-        } else if (isSelected) {
-          ctx.fillStyle = '#ff9800'; // Orange when selected
-        } else {
-          ctx.fillStyle = '#4caf50'; // Green normally
+        // Draw background circle for selection/drag states
+        if (isBeingDragged || isSelected) {
+          if (isBeingDragged) {
+            ctx.fillStyle = 'rgba(33, 150, 243, 0.3)'; // Blue when dragging
+          } else if (isSelected) {
+            ctx.fillStyle = 'rgba(255, 152, 0, 0.3)'; // Orange when selected
+          }
+          
+          ctx.beginPath();
+          ctx.arc(plant.x, plant.y, 30, 0, 2 * Math.PI);
+          ctx.fill();
         }
         
-        ctx.beginPath();
-        ctx.arc(plant.x, plant.y, 25, 0, 2 * Math.PI);
-        ctx.fill();
-        
-        // Draw plant name
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '12px Arial';
+        // Draw emoji
+        const emoji = plant.emoji || '🌱'; // Default emoji if none set
+        ctx.font = '32px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(plant.name, plant.x, plant.y + 4);
+        ctx.textBaseline = 'middle';
+        ctx.fillText(emoji, plant.x, plant.y);
+        
+        // Draw plant name below emoji
+        ctx.fillStyle = '#2d3748';
+        ctx.font = 'bold 11px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(plant.name, plant.x, plant.y + 20);
         
         // Draw drag indicator for dragged plant
         if (isBeingDragged) {
@@ -183,7 +200,7 @@ const Garden = () => {
           ctx.lineWidth = 2;
           ctx.setLineDash([5, 5]);
           ctx.beginPath();
-          ctx.arc(plant.x, plant.y, 30, 0, 2 * Math.PI);
+          ctx.arc(plant.x, plant.y, 35, 0, 2 * Math.PI);
           ctx.stroke();
           ctx.setLineDash([]);
         }
@@ -209,7 +226,7 @@ const Garden = () => {
   const findPlantAtPosition = (x, y) => {
     return plants.find(plant => {
       const distance = Math.sqrt((x - plant.x) ** 2 + (y - plant.y) ** 2);
-      return distance <= 25;
+      return distance <= 30; // Increased for emoji size
     });
   };
 
@@ -282,8 +299,8 @@ const Garden = () => {
 
     if (isDragging && draggedPlant) {
       // Update plant position in real-time during drag
-      const newX = Math.max(25, Math.min(canvasSize.width - 25, mousePos.x - dragOffset.x));
-      const newY = Math.max(25, Math.min(canvasSize.height - 25, mousePos.y - dragOffset.y));
+      const newX = Math.max(30, Math.min(canvasSize.width - 30, mousePos.x - dragOffset.x));
+      const newY = Math.max(30, Math.min(canvasSize.height - 30, mousePos.y - dragOffset.y));
       
       // Update local state for immediate visual feedback
       setPlants(prev => prev.map(plant => 
@@ -304,8 +321,8 @@ const Garden = () => {
     
     if (isDragging && draggedPlant) {
       // Handle end of drag - save position to backend
-      const newX = Math.max(25, Math.min(canvasSize.width - 25, mousePos.x - dragOffset.x));
-      const newY = Math.max(25, Math.min(canvasSize.height - 25, mousePos.y - dragOffset.y));
+      const newX = Math.max(30, Math.min(canvasSize.width - 30, mousePos.x - dragOffset.x));
+      const newY = Math.max(30, Math.min(canvasSize.height - 30, mousePos.y - dragOffset.y));
       
       await updatePlantPosition(draggedPlant.id, newX, newY);
     } else if (mouseDownPlant && !hasDraggedBeyondThreshold) {
@@ -353,6 +370,7 @@ const Garden = () => {
         body: JSON.stringify({
           name: newPlant.name,
           type: newPlant.type,
+          emoji: newPlant.emoji,
           x: newPlant.x,
           y: newPlant.y,
           'planting-date': new Date().toISOString().split('T')[0]
@@ -361,7 +379,7 @@ const Garden = () => {
 
       if (response.ok) {
         setShowAddPlant(false);
-        setNewPlant({ type: '', name: '', x: 0, y: 0 });
+        setNewPlant({ type: '', name: '', emoji: '', x: 0, y: 0 });
         fetchPlants();
       } else {
         setError('Failed to add plant');
@@ -413,6 +431,15 @@ const Garden = () => {
   const handleViewMetrics = () => {
     setShowMetrics(false);
     setShowMetricsViewer(true);
+  };
+
+  const handleEditPlant = () => {
+    setShowMetrics(false);
+    setShowEditPlant(true);
+  };
+
+  const handlePlantUpdated = () => {
+    fetchPlants(); // Refresh plants to show updated data
   };
 
   if (loading) return <Text>Loading garden...</Text>;
@@ -486,19 +513,21 @@ const Garden = () => {
             value={newPlant.type}
             onChange={(value) => {
               if (value) {
-                // Auto-set name to match type when type is selected
+                const selectedType = defaultPlantTypes.find(type => type.name === value);
+                // Auto-set name and emoji to match type when type is selected
                 setNewPlant({ 
                   ...newPlant, 
                   type: value, 
-                  name: newPlant.name || value // Only update name if it's empty
+                  name: newPlant.name || value, // Only update name if it's empty
+                  emoji: newPlant.emoji || selectedType?.emoji || '' // Auto-set emoji if not already set
                 });
               } else {
                 setNewPlant({ ...newPlant, type: '' });
               }
             }}
-            data={defaultPlantImages.map((img) => ({
-              value: img.name,
-              label: img.name
+            data={defaultPlantTypes.map((type) => ({
+              value: type.name,
+              label: `${type.emoji} ${type.name}`
             }))}
             size="md"
           />
@@ -509,9 +538,21 @@ const Garden = () => {
             value={newPlant.name}
             onChange={(e) => setNewPlant({ ...newPlant, name: e.target.value })}
           />
+          <Select
+            label="Plant Emoji"
+            placeholder="Choose an emoji"
+            value={newPlant.emoji}
+            onChange={(value) => setNewPlant({ ...newPlant, emoji: value || '' })}
+            data={commonEmojis.map((emoji) => ({
+              value: emoji,
+              label: emoji
+            }))}
+            searchable
+            size="md"
+          />
           <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={() => setShowAddPlant(false)}>Cancel</Button>
-            <Button onClick={handleAddPlant} disabled={!newPlant.type || !newPlant.name}>Add Plant</Button>
+            <Button onClick={handleAddPlant} disabled={!newPlant.type || !newPlant.name || !newPlant.emoji}>Add Plant</Button>
           </Group>
         </Stack>
       </Modal>
@@ -601,6 +642,9 @@ const Garden = () => {
           </Grid>
           <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={() => setShowMetrics(false)}>Cancel</Button>
+            <Button variant="outline" leftSection={<IconEdit />} onClick={handleEditPlant}>
+              Edit Plant
+            </Button>
             <Button variant="outline" leftSection={<IconTimeline />} onClick={handleViewMetrics}>
               View Metrics History
             </Button>
@@ -630,6 +674,14 @@ const Garden = () => {
           </Button>
         </Group>
       </Modal>
+
+      {/* Plant Edit Dialog */}
+      <PlantEditModal
+        opened={showEditPlant}
+        onClose={() => setShowEditPlant(false)}
+        plant={selectedPlant}
+        onUpdate={handlePlantUpdated}
+      />
     </Box>
   );
 };

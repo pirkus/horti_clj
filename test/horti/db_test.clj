@@ -1,52 +1,13 @@
 (ns horti.db-test
   (:require [clojure.test :refer :all]
             [horti.db :as db]
-            [monger.core :as mg]
-            [monger.collection :as mc]
-            [monger.util :as mu])
-  (:import [org.testcontainers.containers MongoDBContainer]
-           [org.testcontainers.utility DockerImageName]))
+            [horti.test-utils :as test-utils :refer [*test-db*]]))
 
 (def test-user-email "test@example.com")
 (def other-user-email "other@example.com")
 
-(def ^:dynamic *test-db* nil)
-(def ^:dynamic *mongo-container* nil)
-
-(defn start-mongo-container []
-  (let [container (MongoDBContainer. (DockerImageName/parse "mongo:7.0"))]
-    (.start container)
-    container))
-
-(defn with-test-db [f]
-  (let [container (start-mongo-container)
-        connection-string (str (.getConnectionString container) "/horti-test")
-        {:keys [conn db]} (db/connect-to-mongo connection-string)]
-    (try
-      ;; Clean up before test
-      (mc/remove db "users")
-      (mc/remove db "plants")
-      (mc/remove db "canvases")
-      (mc/remove db "daily-metrics")
-      
-      ;; Create indexes
-      (db/create-indexes db)
-      
-      ;; Run test with db
-      (binding [*test-db* db
-                *mongo-container* container]
-        (f))
-      
-      (finally
-        ;; Clean up after test
-        (mc/remove db "users")
-        (mc/remove db "plants")
-        (mc/remove db "canvases")
-        (mc/remove db "daily-metrics")
-        (db/disconnect-from-mongo conn)
-        (.stop container)))))
-
-(use-fixtures :each with-test-db)
+(use-fixtures :once (test-utils/setup-test-db-fixture "horti-test"))
+(use-fixtures :each test-utils/clean-db-fixture)
 
 ;; Canvas Tests
 (deftest test-canvas-creation

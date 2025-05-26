@@ -6,10 +6,9 @@
             [horti.system :as system]
             [horti.jwt :as jwt]
             [horti.db :as db]
+            [horti.test-utils :as test-utils :refer [*test-db*]]
             [monger.collection :as mc]
-            [com.stuartsierra.component :as component])
-  (:import [org.testcontainers.containers MongoDBContainer]
-           [org.testcontainers.utility DockerImageName]))
+            [com.stuartsierra.component :as component]))
 
 (def test-user-email "test@example.com")
 (def other-user-email "other@example.com")
@@ -17,13 +16,6 @@
 (def other-token "other-token-456")
 
 (def ^:dynamic *test-service-fn* nil)
-(def ^:dynamic *test-db* nil)
-(def ^:dynamic *mongo-container* nil)
-
-(defn start-mongo-container []
-  (let [container (MongoDBContainer. (DockerImageName/parse "mongo:7.0"))]
-    (.start container)
-    container))
 
 (defn create-test-service [db]
   (let [routes (system/create-routes db)
@@ -48,36 +40,31 @@
                                           (= token test-token) {:email test-user-email}
                                           (= token other-token) {:email other-user-email}
                                           :else nil))]
-    (let [container (start-mongo-container)
-          connection-string (str (.getConnectionString container) "/horti-api-test")
-          {:keys [conn db]} (db/connect-to-mongo connection-string)
+    (let [container (test-utils/start-mongo-container)
+          {:keys [conn db]} (test-utils/create-test-db-connection container "horti-api-test")
           service-fn (create-test-service db)]
       (try
-        ;; Create indexes
+        ;; Create indexes once
         (db/create-indexes db)
         
-        ;; Clean database before tests
-        (mc/remove db "users")
-        (mc/remove db "plants")
-        (mc/remove db "canvases")
-        (mc/remove db "daily-metrics")
-        
-        ;; Run tests with service
+        ;; Run all tests with service
         (binding [*test-service-fn* service-fn
-                  *test-db* db
-                  *mongo-container* container]
+                  test-utils/*test-db* db
+                  test-utils/*mongo-container* container]
           (f))
         
         (finally
-          ;; Clean up
-          (mc/remove db "users")
-          (mc/remove db "plants")
-          (mc/remove db "canvases")
-          (mc/remove db "daily-metrics")
+          ;; Clean up after all tests
           (db/disconnect-from-mongo conn)
           (.stop container))))))
 
-(use-fixtures :each with-test-system)
+(defn clean-test-system [f]
+  ;; Clean database before each test
+  (test-utils/clean-test-collections test-utils/*test-db*)
+  (f))
+
+(use-fixtures :once with-test-system)
+(use-fixtures :each clean-test-system)
 
 (defn auth-header [token]
   {"Authorization" (str "Bearer " token)})

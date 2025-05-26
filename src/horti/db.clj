@@ -79,11 +79,11 @@
 (defn save-daily-metrics
   "Saves daily metrics for a specific plant"
   [db user-email plant-id metrics-data]
-  (save-document db "daily-metrics"
-                 (assoc metrics-data
-                        :user-email user-email
-                        :plant-id plant-id
-                        :recorded-at (java.util.Date.))))
+  (let [doc (assoc metrics-data
+                   :user-email user-email
+                   :plant-id plant-id
+                   :recorded-at (java.util.Date.))]
+    (save-document db "daily-metrics" doc)))
 
 (defn get-plant-metrics
   "Gets daily metrics for a plant within a date range, filtered by user for security"
@@ -93,8 +93,6 @@
                 (assoc base-query :date {"$gte" start-date "$lte" end-date})
                 base-query)]
     (find-documents db "daily-metrics" query)))
-
-
 
 (defn save-canvas
   "Saves a new garden canvas"

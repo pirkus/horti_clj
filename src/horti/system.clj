@@ -4,20 +4,24 @@
    [com.stuartsierra.component :as component]
    [io.pedestal.http :as http]
    [io.pedestal.http.body-params :refer [body-params]]
-   [io.pedestal.http.route :as route]
+   [io.pedestal.http.route.definition.table :as route.table]
    [io.pedestal.interceptor.error :as err]
-   [monger.collection :as mc]
    [horti.db :as db]
    [horti.http-resp :as http-resp]
    [horti.jwt :as jwt]
-   [ring.util.response :as response]))
+   [clojure.string :as string]))
 
 (def exception-handler
   (err/error-dispatch [context ex]
+    [{:exception-type :com.fasterxml.jackson.core.JsonParseException}]
+    (do
+      (log/warn "JSON parsing error:" ex)
+      (assoc context :response (http-resp/bad-request "Invalid JSON format")))
+    
     [{:exception-type :com.fasterxml.jackson.core.io.JsonEOFException}]
     (do
       (log/warn "JSON parsing error:" ex)
-      (assoc context :response (http-resp/handle-validation-error ex)))
+      (assoc context :response (http-resp/bad-request "Invalid JSON format")))
 
     [{:exception-type :com.mongodb.MongoException}]
     (do
@@ -151,15 +155,17 @@
   (fn [request]
     (try
       (let [{:keys [name description width height]} (:json-params request)
-            user-email (get-in request [:identity :email])
-            canvas-data {:name name
-                        :description description
-                        :width (or width 800)
-                        :height (or height 600)}
-            result (db/save-canvas db user-email canvas-data)]
-        (if (contains? result :result)
-          (http-resp/created {:result "Canvas created" :id (str (:_id (:result result)))})
-          (http-resp/bad-request (:error result))))
+            user-email (get-in request [:identity :email])]
+        (if (string/blank? name)
+          (http-resp/bad-request "Canvas name is required")
+          (let [canvas-data {:name name
+                            :description description
+                            :width (or width 800)
+                            :height (or height 600)}
+                result (db/save-canvas db user-email canvas-data)]
+            (if (contains? result :result)
+              (http-resp/created {:result "Canvas created" :id (str (:_id (:result result)))})
+              (http-resp/bad-request (:error result))))))
       (catch Exception e
         (http-resp/handle-db-error e)))))
 
@@ -272,31 +278,32 @@
 
 (defn health-check-handler [_]
   (fn [_]
-    (http-resp/ok {:status "healthy" :timestamp (java.time.Instant/now)})))
+    (http-resp/ok {:status "healthy" :timestamp (str (java.time.Instant/now))})))
 
 ;; ----------------------------------------------------------------------------
 ;; Routes
 ;; ----------------------------------------------------------------------------
 
 (defn create-routes [db]
-  (route/expand-routes
-   #{["/api/health" :get (health-check-handler db) :route-name :health-check]
-     ;; Canvas routes
-     ["/api/canvases" :post [(body-params) jwt/auth-interceptor (create-canvas-handler db)] :route-name :create-canvas]
-     ["/api/canvases" :get [jwt/auth-interceptor (get-canvases-handler db)] :route-name :get-canvases]
-     ["/api/canvases/archived" :get [jwt/auth-interceptor (get-archived-canvases-handler db)] :route-name :get-archived-canvases]
-     ["/api/canvases/:canvas-id" :get [jwt/auth-interceptor (get-canvas-handler db)] :route-name :get-canvas]
-     ["/api/canvases/:canvas-id" :put [(body-params) jwt/auth-interceptor (update-canvas-handler db)] :route-name :update-canvas]
-     ["/api/canvases/:canvas-id/archive" :put [(body-params) jwt/auth-interceptor (archive-canvas-handler db)] :route-name :archive-canvas]
-     ["/api/canvases/:canvas-id/plants" :get [jwt/auth-interceptor (get-canvas-plants-handler db)] :route-name :get-canvas-plants]
-     ["/api/canvases/:canvas-id/plants" :post [(body-params) jwt/auth-interceptor (create-canvas-plant-handler db)] :route-name :create-canvas-plant]
-     ;; Legacy plant routes (for backward compatibility)
-     ["/api/plants" :post [(body-params) jwt/auth-interceptor (create-plant-handler db)] :route-name :create-plant]
-     ["/api/plants" :get [jwt/auth-interceptor (get-plants-handler db)] :route-name :get-plants]
-     ["/api/plants/:plant-id/metrics" :post [(body-params) jwt/auth-interceptor (create-daily-metrics-handler db)] :route-name :create-metrics]
-     ["/api/plants/:plant-id/metrics" :get [jwt/auth-interceptor (get-plant-metrics-handler db)] :route-name :get-plant-metrics]
-     ["/api/plants/:plant-id" :put [(body-params) jwt/auth-interceptor (update-plant-handler db)] :route-name :update-plant]
-     ["/api/plants/:plant-id" :delete [jwt/auth-interceptor (delete-plant-handler db)] :route-name :delete-plant]}))
+  (route.table/table-routes
+   {}
+   [["/api/health" :get (health-check-handler db) :route-name :health-check]
+    ;; Canvas routes - archived must come before :canvas-id to avoid matching "archived" as an ID
+    ["/api/canvases" :post [(body-params) jwt/auth-interceptor (create-canvas-handler db)] :route-name :create-canvas]
+    ["/api/canvases" :get [jwt/auth-interceptor (get-canvases-handler db)] :route-name :get-canvases]
+    ["/api/canvases/archived" :get [jwt/auth-interceptor (get-archived-canvases-handler db)] :route-name :get-archived-canvases]
+    ["/api/canvases/:canvas-id" :get [jwt/auth-interceptor (get-canvas-handler db)] :route-name :get-canvas]
+    ["/api/canvases/:canvas-id" :put [(body-params) jwt/auth-interceptor (update-canvas-handler db)] :route-name :update-canvas]
+    ["/api/canvases/:canvas-id/archive" :put [(body-params) jwt/auth-interceptor (archive-canvas-handler db)] :route-name :archive-canvas]
+    ["/api/canvases/:canvas-id/plants" :get [jwt/auth-interceptor (get-canvas-plants-handler db)] :route-name :get-canvas-plants]
+    ["/api/canvases/:canvas-id/plants" :post [(body-params) jwt/auth-interceptor (create-canvas-plant-handler db)] :route-name :create-canvas-plant]
+    ;; Legacy plant routes (for backward compatibility)
+    ["/api/plants" :post [(body-params) jwt/auth-interceptor (create-plant-handler db)] :route-name :create-plant]
+    ["/api/plants" :get [jwt/auth-interceptor (get-plants-handler db)] :route-name :get-plants]
+    ["/api/plants/:plant-id/metrics" :post [(body-params) jwt/auth-interceptor (create-daily-metrics-handler db)] :route-name :create-metrics]
+    ["/api/plants/:plant-id/metrics" :get [jwt/auth-interceptor (get-plant-metrics-handler db)] :route-name :get-plant-metrics]
+    ["/api/plants/:plant-id" :put [(body-params) jwt/auth-interceptor (update-plant-handler db)] :route-name :update-plant]
+    ["/api/plants/:plant-id" :delete [jwt/auth-interceptor (delete-plant-handler db)] :route-name :delete-plant]]))
 
 ;; ----------------------------------------------------------------------------
 ;; HTTP Component
@@ -308,6 +315,7 @@
     (let [db (:db mongo)
           routes (create-routes db)
           service-map {::http/routes routes
+                      ::http/router :linear-search
                       ::http/type :jetty
                       ::http/port port
                       ::http/resource-path "/public"
